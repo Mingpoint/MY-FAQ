@@ -341,8 +341,6 @@ Java 内存模型（Java Memory Model，JMM）定义了 Java 程序中多线程�
 
 
 
-
-
 ##### 线程池参数
 
 **我的回答**：核心数，最大线程数，队列，拒绝策略
@@ -357,7 +355,50 @@ Java 内存模型（Java Memory Model，JMM）定义了 Java 程序中多线程�
 6. **threadFactory**：线程工厂，用于创建新的线程。如果不指定线程工厂，默认使用 Executors.defaultThreadFactory() 方法创建线程。
 7. **handler**：拒绝策略，用于处理线程池无法处理的任务。常见的拒绝策略有 ThreadPoolExecutor.AbortPolicy、ThreadPoolExecutor.DiscardPolicy、ThreadPoolExecutor.DiscardOldestPolicy 和 ThreadPoolExecutor.CallerRunsPolicy。
 
-通过合理地设置这些参数，可以根据实际情况调整线程池的性能和资源利用率，从而提高程序的响应速度和吞吐量
+通过合理地设置这些参数，可以根据实际情况调整线程池的性能和资源利用率，从而提高程序的响应速度和吞吐量。
+
+##### ThreadLocal 内存泄漏的原因
+
+![alt](/Users/limin/code/mygit/MY-FAQ/image/ThreadLocal-.jpg)
+
+由图可知，ThreadLocalMap使用ThreadLocal的弱引用作为key，如果一个ThreadLocal不存在外部强引用时，Key(ThreadLocal)势必会被GC回收，这样就会导致ThreadLocalMap中key为null， 而value还存在着强引用，只有thead线程退出以后,value的强引用链条才会断掉。
+
+##### 那为什么使用弱引用而不是强引用？
+key 使用强引用
+当hreadLocalMap的key为强引用回收ThreadLocal时，因为ThreadLocalMap还持有ThreadLocal的强引用，如果没有手动删除，ThreadLocal不会被回收，导致Entry内存泄漏。
+
+key 使用弱引用
+当ThreadLocalMap的key为弱引用回收ThreadLocal时，由于ThreadLocalMap持有ThreadLocal的弱引用，即使没有手动删除，ThreadLocal也会被回收。当key为null，在下一次ThreadLocalMap调用set(),get()，remove()方法的时候会被清除value值。
+
+
+
+##### concurrentHashMap 1.7和1.8
+
+***1.7***
+
+采用分段锁，即`Segment` 数组 + `HashEntry` 节点，Segment继承了ReentrantLock,锁定的也是Segment
+
+***1.8***
+
+`CAS + synchronized` 来保证并发安全性，根据key的hash值定位到对应的桶(Node节点)，
+
+判断是否是首节点，如果是就CAS(**compare and swap**) 写入，
+
+如果是在散列，就加入散列，判断是否大于8个，如果大于就直接转红黑树
+
+如果不是首节点，synchronized 锁住该节点，然后写入。
+
+
+
+##### concurrentHashMap 1.8为什么使用CAS+synchronized 而不是ReentrantLock
+
+1.内存上的开销，如果使用ReentranLock，每个Node节点都需要AQS来支持，但是不是每个节点都需要锁住的
+
+2.1.8锁定的是某个Node头结点，也就是对象，粒度很细了，如果数据量小，synchronized 的结果大概率也是偏量锁或者轻量级锁，而不会升级为重量级锁，
+
+如果数据量大，synchronized 的结果大概率也是偏量锁或者轻量级锁，因为1.8之后Node链表长度超过了8就转换为红黑树了，所以不会存在长时间自旋。
+
+
 
 
 
