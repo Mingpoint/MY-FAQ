@@ -98,6 +98,21 @@ MVCC 工作流程如下：
 3. mvcc只解决 RR级别下，快照读的幻读情况，当前读则未解决，需要使用锁(Next-key Lock)来处理
 4. 事务一开始就直接加锁(Next-key Lock)
 
+##### MySQL 如何保证ACID?
+
+
+1. 原子性: Innodb中用undo log 来保证
+   - 当delete数据时，记录这条信息，需要回滚时候，insert这条就记录
+   - 当需要update数据时，记录这条信息的旧值，回滚的时候，update操作
+   - 当insert数据时，记录这条信息主键，需要回滚时候，根据主键delete这条就记录
+2. 持久性：innodb中的redo log 保证。MySQL先把磁盘数据加载到内存，
+   在内存操作完成后再刷入磁盘，如果发生宕机了，数据丢失。redo log 可以解决这种问题，
+   MySQL在做修改数据的时候不仅在内存修改，也会在redo log 中记录这次操作。当事务提交的时候redo log 会进行刷盘。
+   当机器宕机重启后会将redo log内容回复到数据库中，在根据undo log 和 bing log 内容决定是否回滚。
+3. 隔离性：MySQL利用锁和MVCC来保证隔离性。
+4. 一致性：上面三个都满足了了一致性自然就满足了。
+   
+
 
 
 
